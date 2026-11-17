@@ -3,6 +3,8 @@ import os
 import sys
 import pytest
 from vcd import VCDWriter
+from pathlib import Path
+from asm import assemble_file
 
 # Permite importar isa y golden_model ejecutando pytest desde cualquier carpeta
 sys.path.insert(0, os.path.dirname(__file__))
@@ -162,3 +164,14 @@ def test_i2c_open_drain_safety_and_vcd():
 
     # El bit ACK leído en el ciclo de reloj 9 debe ser 0
     assert (emu.isr & 1) == 0, "No se detectó el ACK (0) del esclavo I2C"
+
+def test_assembler_matches_firmware_files():
+    """Comprueba que los 3 archivos .asm ensamblan sin errores y ejecutan en el Golden Model."""
+    fw_dir = Path(__file__).parent / "firmware"
+    uart_prog = assemble_file(fw_dir / "uart_tx.asm")
+    spi_prog  = assemble_file(fw_dir / "spi_master.asm")
+    i2c_prog  = assemble_file(fw_dir / "i2c_master.asm")
+
+    assert len(uart_prog) == 8
+    assert len(spi_prog) == 13
+    assert len(i2c_prog) == 18
