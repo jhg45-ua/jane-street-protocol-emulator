@@ -96,3 +96,42 @@ def decode_instr(word: int) -> tuple[int, int, int, int]:
     submode = (word >> 5)  & MASK_2B
     operand = word & MASK_5B
     return opcode, delay, submode, operand
+
+
+# Asignación de pines de entrada dedicados (ui_in[7:0]) para la interfaz host
+UI_HOST_NIB_MASK = MASK_4B
+UI_RX_POP_BIT    = 4
+UI_BIST_EN_BIT   = 5
+UI_RUN_EN_BIT    = 6
+UI_WR_STB_BIT    = 7
+
+
+def pack_ui_in(
+    wr_stb: int = 0,
+    run_en: int = 0,
+    bist_en: int = 0,
+    rx_pop: int = 0,
+    host_nib: int = 0,
+) -> int:
+    """Empaqueta las señales de control y el nibble host en un byte ui_in[7:0]."""
+    return (
+        ((wr_stb  & MASK_1B) << UI_WR_STB_BIT)
+        | ((run_en  & MASK_1B) << UI_RUN_EN_BIT)
+        | ((bist_en & MASK_1B) << UI_BIST_EN_BIT)
+        | ((rx_pop  & MASK_1B) << UI_RX_POP_BIT)
+        | (host_nib & UI_HOST_NIB_MASK)
+    ) & MASK_8B
+
+
+# Micro-ROM BIST: UART TX 8N1 a 4 ciclos/bit (idéntica a firmware/uart_tx.asm)
+BIST_BYTES = (ord("O"), ord("K"), ord("\n"))
+BIST_PROGRAM = (
+    encode_instr(Opcode.PIN,  PinMode.SET,     operand=0, delay=0),  # 0: TX idle = 1
+    encode_instr(Opcode.PULL, FifoMode.BLOCK,  operand=0, delay=0),  # 1: TX_FIFO -> OSR
+    encode_instr(Opcode.SET,  SetDest.X,       operand=7, delay=0),  # 2: 8 bits
+    encode_instr(Opcode.PIN,  PinMode.CLR,     operand=0, delay=3),  # 3: START (4c)
+    encode_instr(Opcode.OUT,  OutMode.LSB_PIN, operand=0, delay=2),  # 4: Bit LSB (3c + JMP = 4c)
+    encode_instr(Opcode.JMP,  JmpCond.X_NZ,    operand=4, delay=0),  # 5: Loop 8 bits
+    encode_instr(Opcode.PIN,  PinMode.SET,     operand=0, delay=3),  # 6: STOP (4c)
+    encode_instr(Opcode.JMP,  JmpCond.ALWAYS,  operand=1, delay=0),  # 7: Siguiente byte
+)
