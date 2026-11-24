@@ -1,0 +1,16 @@
+# Reusable Cocotb Makefile for unit-testing individual RTL modules in src/
+SIM ?= icarus
+TOPLEVEL_LANG ?= verilog
+SRC_DIR = $(PWD)/../src
+
+UNIT_MODULE ?= fifo_sync
+UNIT_SOURCES ?= $(UNIT_MODULE).v
+
+SIM_BUILD = sim_build/unit_$(UNIT_MODULE)
+VERILOG_SOURCES = $(addprefix $(SRC_DIR)/,$(UNIT_SOURCES))
+COMPILE_ARGS += -I$(SRC_DIR)
+
+TOPLEVEL = $(UNIT_MODULE)
+COCOTB_TEST_MODULES ?= test_fifo
+
+include $(shell cocotb-config --makefiles)/Makefile.sim
