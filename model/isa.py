@@ -19,6 +19,10 @@ FIFO_DEPTH = 4  # 4 bytes de profundidad en TX_FIFO y RX_FIFO
 
 
 class Opcode(IntEnum):
+    """
+    Códigos de operación de la Micro-ISA (4 bits).
+    Cada instrucción es de 16 bits: [opcode:4][delay:5][submode:2][operand:5].
+    """
     JMP  = 0x0
     WAIT = 0x1
     SET  = 0x2
@@ -31,6 +35,13 @@ class Opcode(IntEnum):
 
 
 class JmpCond(IntEnum):
+    """
+    Condiciones de salto para la instrucción JMP (2 bits).
+    - ALWAYS: Salta siempre.
+    - X_NZ: Salta si el registro X no es cero.
+    - Y_NZ: Salta si el registro Y no es cero.
+    - PIN_0: Salta si el pin de entrada ui_in[0] es 0.
+    """
     ALWAYS = 0b00
     X_NZ   = 0b01
     Y_NZ   = 0b10
@@ -38,11 +49,23 @@ class JmpCond(IntEnum):
 
 
 class WaitPol(IntEnum):
+    """
+    Polaridad de espera para la instrucción WAIT (2 bits).
+    - LOW: Espera hasta que el pin de entrada ui_in[0] sea 0.
+    - HIGH: Espera hasta que el pin de entrada ui_in[0] sea 1.
+    """
     LOW  = 0b00
     HIGH = 0b01
 
 
 class SetDest(IntEnum):
+    """
+    Destino del registro para la instrucción SET (2 bits).
+    - X: Establece el registro X.
+    - Y: Establece el registro Y.
+    - PINS: Establece los pines de salida ui_out[7:0].
+    - OE: Establece el registro de habilitación de salida ui_oe[7:0].
+    """
     X    = 0b00
     Y    = 0b01
     PINS = 0b10
@@ -50,6 +73,13 @@ class SetDest(IntEnum):
 
 
 class PinMode(IntEnum):
+    """
+    Modo de operación del pin para la instrucción PIN (2 bits).
+    - CLR: Fuerza 0 activo (ui_out=0, ui_oe=1).
+    - SET: Fuerza 1 activo (ui_out=1, ui_oe=1).
+    - HIZ: Alta impedancia / Open-Drain Z (ui_out=0, ui_oe=0).
+    - TOG: Conmuta el estado del pin (útil para reloj SCK).
+    """
     CLR = 0b00  # Fuerza 0 activo (uio_out=0, uio_oe=1)
     SET = 0b01  # Fuerza 1 activo (uio_out=1, uio_oe=1)
     HIZ = 0b10  # Alta impedancia / Open-Drain Z (uio_out=0, uio_oe=0)
@@ -57,6 +87,13 @@ class PinMode(IntEnum):
 
 
 class OutMode(IntEnum):
+    """
+    Modo de salida para la instrucción OUT (2 bits).
+    - LSB_PIN: Saca OSR[0] push-pull y desplaza OSR >>= 1 (UART).
+    - MSB_PIN: Saca OSR[7] push-pull y desplaza OSR <<= 1 (SPI).
+    - OD_LSB: Saca OSR[0] en Open-Drain y desplaza OSR >>= 1 (1-Wire).
+    - OD_MSB: Saca OSR[7] en Open-Drain y desplaza OSR <<= 1 (I2C).
+    """
     LSB_PIN = 0b00  # Saca OSR[0] push-pull y desplaza OSR >>= 1 (UART)
     MSB_PIN = 0b01  # Saca OSR[7] push-pull y desplaza OSR <<= 1 (SPI)
     OD_LSB  = 0b10  # Saca OSR[0] en Open-Drain y desplaza OSR >>= 1 (1-Wire)
@@ -64,16 +101,32 @@ class OutMode(IntEnum):
 
 
 class InMode(IntEnum):
+    """
+    Modo de entrada para la instrucción IN (2 bits).
+    - SHIFT_L: Desplaza ISR <<= 1 y captura ui_in[0] (MSB-first: SPI, I2C).
+    - SHIFT_R: Desplaza ISR >>= 1 y captura ui_in[0] en ISR[7] (LSB-first: UART RX).
+    """
     SHIFT_L = 0b00  # ISR = (ISR << 1) | pin (MSB-first: SPI, I2C)
     SHIFT_R = 0b01  # ISR = (ISR >> 1) | (pin << 7) (LSB-first: UART RX)
 
 
 class FifoMode(IntEnum):
+    """
+    Modo de operación del FIFO para las instrucciones PULL y PUSH (2 bits).
+    - BLOCK: Bloquea si el FIFO está vacío (PULL) o lleno (PUSH).
+    - NOBLOCK: No bloquea; PULL devuelve 0 si el FIFO está vacío, y PUSH descarta el byte si el FIFO está lleno.
+    """
     BLOCK   = 0b00
     NOBLOCK = 0b01
 
 
 class CrcMode(IntEnum):
+    """
+    Modo de operación del CRC para las instrucciones CRC (2 bits).
+    - MOV_OSR: Mueve el CRC a OSR (para enviar el byte de CRC al final del paquete).
+    - MOV_ISR: Mueve el CRC a ISR.
+    - RESET: Reinicia el CRC a 0x00.
+    """
     MOV_OSR = 0b00  # OSR = CRC (para enviar el byte de CRC al final del paquete)
     MOV_ISR = 0b01  # ISR = CRC
     RESET   = 0b10  # CRC = 0x00
